@@ -41,9 +41,8 @@ def run(config_file='config.ini', debug=False):
             'irc3.plugins.core',
             'irc3.plugins.autocommand',
             'irc3.plugins.command',
-            'irc3.plugins.cron',
             'irc3.plugins.log',
-            'twitch_osu_bot.irc.twitch',
+            'gumiyabot.twitch',
         ],
         autocommands=[
             'CAP REQ :twitch.tv/membership',
@@ -55,6 +54,7 @@ def run(config_file='config.ini', debug=False):
         osu_api_key=gumiya_config['osu_api_key'],
         tillerino_api_key=gumiya_config.get('tillerino_api_key', fallback=''),
         bancho_nick=gumiya_config['bancho_username'],
+        twitch_channel=gumiya_config['twitch_channel'],
     )
     twitch_config.update(config_common)
 
@@ -64,9 +64,8 @@ def run(config_file='config.ini', debug=False):
         includes=[
             'irc3.plugins.core',
             'irc3.plugins.command',
-            'irc3.plugins.cron',
             'irc3.plugins.log',
-            'twitch_osu_bot.irc.bancho',
+            'gumiyabot.bancho',
         ],
         nick=gumiya_config['bancho_username'],
         password=gumiya_config['bancho_password'],
@@ -88,7 +87,7 @@ def generate_config(filename='config.ini'):
         f.write('''
 [gumiya]
 
-# Twitch IRC username and password (required)
+# Twitch bot IRC username and password (required)
 #
 # See https://help.twitch.tv/customer/portal/articles/1302780-twitch-irc for
 # details on obtaining a Twitch IRC oauth token
@@ -98,6 +97,15 @@ def generate_config(filename='config.ini'):
 #   twitch_password = oauth:abcd1234
 twitch_username =
 twitch_password =
+
+# Twitch channel name (required)
+#
+# This may be different from twitch_username if you are running the bot on
+# its own twitch account
+#
+# Ex:
+#   twitch_channel = GumiyaBot
+twitch_channel =
 
 # Bancho (osu!) IRC username and password (required)
 #

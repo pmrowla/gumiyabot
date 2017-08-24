@@ -37,6 +37,8 @@ class BaseTwitchPlugin:
         else:
             self.tillerino = None
         self.twitch_channel = self.bot.config.get('twitch_channel')
+        if not self.twitch_channel.startswith('#'):
+            self.twitch_channel = '#{}'.format(self.twitch_channel)
 
     @irc3.event(irc3.rfc.CONNECTED)
     def connected(self, **kw):
@@ -54,7 +56,7 @@ class BaseTwitchPlugin:
                 if pp:
                     beatmap.pp = pp
                     return pp
-            beatmap.pp = None
+        beatmap.pp = None
         return None
 
     def validate_beatmaps(self, beatmaps, **kwargs):

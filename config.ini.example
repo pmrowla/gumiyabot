@@ -21,6 +21,15 @@ twitch_password =
 bancho_username =
 bancho_password =
 
+# Twitch channel name (required)
+#
+# This may be different from twitch_username if you are running the bot on
+# its own twitch account
+#
+# Ex:
+#   twitch_channel = GumiyaBot
+twitch_channel =
+
 # osu! API key (required)
 #
 # See https://osu.ppy.sh/p/api to obtain an osu! API key
