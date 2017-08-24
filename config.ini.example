@@ -1,0 +1,36 @@
+[gumiya]
+
+# Twitch IRC username and password (required)
+#
+# See https://help.twitch.tv/customer/portal/articles/1302780-twitch-irc for
+# details on obtaining a Twitch IRC oauth token
+#
+# Ex:
+#   twitch_username = GumiyaBot
+#   twitch_password = oauth:abcd1234
+twitch_username =
+twitch_password =
+
+# Bancho (osu!) IRC username and password (required)
+#
+# See https://osu.ppy.sh/p/irc to obtain a Bancho IRC password
+#
+# Ex:
+#   bancho_username = GumiyaBot
+#   bancho_password = abcd1234
+bancho_username =
+bancho_password =
+
+# osu! API key (required)
+#
+# See https://osu.ppy.sh/p/api to obtain an osu! API key
+#
+# Ex:
+#   osu_api_key = abcd1234
+osu_api_key =
+
+# Tillerino API key (optional)
+#
+# If you do not have a Tillerino API key, you can leave this option blank,
+# but PP information will be unavailable for map requests.
+tillerino_api_key =
