@@ -52,6 +52,6 @@ Usage
 
 Configuration
 -------------
-See `config.ini.example` for details on configuration options.
+See `config.ini.example`_ for details on configuration options.
 
 .. _`config.ini.example`: https://github.com/pmrowla/gumiyabot/blog/master/config.ini.example
