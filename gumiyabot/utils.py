@@ -27,4 +27,4 @@ class TillerinoApi(object):
         params = {'beatmapid': beatmap_id, 'mods': mods}
         if wait:
             params['wait'] = wait
-        return self._get(self.BEATMAP_INFO, params=params)
+        return await self._get(self.BEATMAP_INFO, params=params)
