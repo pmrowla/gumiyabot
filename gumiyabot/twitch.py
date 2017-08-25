@@ -48,7 +48,7 @@ class BaseTwitchPlugin:
     @asyncio.coroutine
     def _get_pp(self, beatmap):
         if self.tillerino:
-            data = self.tillerino.beatmapinfo(beatmap.beatmap_id)
+            data = yield from self.tillerino.beatmapinfo(beatmap.beatmap_id)
             if data:
                 pp = {}
                 for entry in data['ppForAcc']['entry']:
@@ -62,8 +62,10 @@ class BaseTwitchPlugin:
     def validate_beatmaps(self, beatmaps, **kwargs):
         """Return subset of maps in beatmaps that pass validation criteria
 
-        Override this method in subclasses as needed, an empty list indicates that
-        all maps failed validation.
+        Raises:
+            BeatmapValidationError if a map fails validation
+
+        Override this method in subclasses as needed
         """
         return beatmaps
 
@@ -125,6 +127,7 @@ class BaseTwitchPlugin:
         return (beatmap, msg)
 
     def _badge_list(self, badges):
+        """Parse twitch badge ircv3 tags into a list"""
         b_list = []
         for x in badges.split(','):
             (badge, version) = x.split('/', 1)
@@ -132,6 +135,7 @@ class BaseTwitchPlugin:
         return b_list
 
     def _is_sub(self, privmsg_tags):
+        """Check if twitch irc3 tags include sub (or mod) badge"""
         badges = self._badge_list(privmsg_tags.get('badges', ''))
         if any(b in badges for b in ['broadcaster', 'moderator', 'subscriber']):
             return True
@@ -177,7 +181,7 @@ class BaseTwitchPlugin:
 
     @irc3.event(irc3.rfc.PRIVMSG)
     @asyncio.coroutine
-    def request_beatmap(self, tags=None, mask=None, target=None, data=None, **kwargs):
+    def request_beatmap(self, tags=None, mask=None, target=None, data=None, bancho_target=None, **kwargs):
         if not target.is_channel or not data:
             return
         patterns = [
@@ -194,7 +198,9 @@ class BaseTwitchPlugin:
                 (beatmap, msg) = yield from callback(m, mask, target, **kwargs)
                 if beatmap:
                     bancho_msg = self._bancho_msg(mask, beatmap)
-                    yield from self.bancho_queue.put((self.bancho_nick, bancho_msg))
+                    if not bancho_target:
+                        bancho_target = self.bancho_nick
+                    yield from self.bancho_queue.put((bancho_target, bancho_msg))
                 if msg:
                     self.bot.privmsg(target, msg)
                 break
