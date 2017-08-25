@@ -69,4 +69,4 @@ If you need to extend either of the base plugin classes, there are some things t
   If you want the base plugin's event or command handling, just call ``super()`` from your subclass.
 * For examples, see the `Gumiya IRC plugins`_
 
-.. _`Gumiya IRC plugins`: https://github.com/gumiya/tree/master/twitch_osu_bot/irc
+.. _`Gumiya IRC plugins`: https://github.com/pmrowla/gumiya/tree/master/twitch_osu_bot/irc
