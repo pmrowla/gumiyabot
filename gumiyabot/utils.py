@@ -12,13 +12,16 @@ class TillerinoApi(object):
 
     def __init__(self, key):
         self.key = key
-        self.session = aiohttp.ClientSession()
+        self.session = None
 
     async def _get(self, url, params={}):
+        if not self.session:
+            self.session = aiohttp.ClientSession()
+
         params.update({'k': self.key})
         async with self.session.get(url, params=params) as r:
             if r.status == 200:
-                return r.json()
+                return await r.json()
             else:
                 return None
 
@@ -27,4 +30,5 @@ class TillerinoApi(object):
         params = {'beatmapid': beatmap_id, 'mods': mods}
         if wait:
             params['wait'] = wait
-        return await self._get(self.BEATMAP_INFO, params=params)
+        resp = await self._get(self.BEATMAP_INFO, params=params)
+        return resp

@@ -41,8 +41,8 @@ Via pip
 
     pip install gumiyabot
 
-Usage
------
+Running the bot
+---------------
 
 1. Generate a new config.ini
 
@@ -59,8 +59,19 @@ See `config.ini.example`_ for details on configuration options.
 
 .. _`config.ini.example`: https://github.com/pmrowla/gumiyabot/blob/master/config.ini.example
 
+Twitch usage
+------------
+
+* Map requests can be linked in the format ``<beatmap or mapset URL> +HDDT``.
+  The bot accepts beatmap and mapset URLs from both the old and new osu! web sites.
+  PP information is dependent on Tillerino.
+  When mods are used, the bot output will always the display the modified AR, OD and BPM, but displaying modified star rating is dependent on Tillerino.
+  If Tillerino is unavailable, or if Tillerino does not have a calculated PP and difficulty for a certain map + mod combination, the nomod star rating will be used.
+* Player stats can be queried with `!stats <player name>`
+
 Developing
 ----------
+
 If you need to extend either of the base plugin classes, there are some things to note beforehand:
 
 * Your subclass must have an ``__init__`` method.
