@@ -62,10 +62,10 @@ See `config.ini.example`_ for details on configuration options.
 Developing
 ----------
 If you need to extend either of the base plugin classes, there are some things to note beforehand:
-* Your subclass must have an `__init__` method.
-  If you do not need to add any custom functionality, it should just call `super(MyPluginClass, self).__init__()`.
-* Any `irc3.event` or `irc3.command` decorated method from the base plugin class must be overridden in your subclass.
-  If you want the base plugin's event or command handling, just call `super()` from your subclass.
+* Your subclass must have an ``__init__`` method.
+  If you do not need to add any custom functionality, it should just call ``super(MyPluginClass, self).__init__()``.
+* Any ``irc3.event`` or ``irc3.command`` decorated method from the base plugin class must be overridden in your subclass.
+  If you want the base plugin's event or command handling, just call ``super()`` from your subclass.
 * For examples, see the `Gumiya IRC plugins`_
 
 .. _`Gumiya IRC plugins`: https://github.com/gumiya/tree/master/twitch_osu_bot/irc
