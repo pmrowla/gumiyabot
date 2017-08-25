@@ -67,7 +67,7 @@ Twitch usage
   PP information is dependent on Tillerino.
   When mods are used, the bot output will always the display the modified AR, OD and BPM, but displaying modified star rating is dependent on Tillerino.
   If Tillerino is unavailable, or if Tillerino does not have a calculated PP and difficulty for a certain map + mod combination, the nomod star rating will be used.
-* Player stats can be queried with `!stats <player name>`
+* Player stats can be queried with ``!stats <player name>``
 
 Developing
 ----------
