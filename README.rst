@@ -41,6 +41,11 @@ Via pip
 
     pip install gumiyabot
 
+Alternatively, you can clone the source repository and run the bot module directly
+
+    pip install -r requirements.txt
+    python -m gumiyabot
+
 Running the bot
 ---------------
 
