@@ -5,9 +5,13 @@ twitch_osu_bot Twitch chat irc3 plugin.
 from __future__ import unicode_literals
 
 import asyncio
+import math
 import re
 
+import async_timeout
+
 import irc3
+from irc3.plugins.command import command
 
 from osuapi import OsuApi, AHConnector
 from osuapi.errors import HTTPError
@@ -45,10 +49,19 @@ class BaseTwitchPlugin:
         self.bot.log.info('[twitch] Connected to twitch as {}'.format(self.bot.nick))
         self.join(self.twitch_channel)
 
+    def join(self, channel):
+        self.bot.log.info('[twitch] Trying to join channel {}'.format(channel))
+        self.bot.join(channel)
+
+    def part(self, channel):
+        self.bot.log.info('[twitch] Leaving channel {}'.format(channel))
+        self.bot.part(channel)
+
     @asyncio.coroutine
     def _get_pp(self, beatmap):
         if self.tillerino:
-            data = yield from self.tillerino.beatmapinfo(beatmap.beatmap_id)
+            with async_timeout.timeout(10):
+                data = yield from self.tillerino.beatmapinfo(beatmap.beatmap_id)
             if data:
                 pp = {}
                 for entry in data['ppForAcc']['entry']:
@@ -93,9 +106,10 @@ class BaseTwitchPlugin:
     @asyncio.coroutine
     def _request_mapset(self, match, mask, target, **kwargs):
         try:
-            mapset = yield from self.osu.get_beatmaps(
-                beatmapset_id=match.group('mapset_id'),
-                include_converted=0)
+            with async_timeout.timeout(10):
+                mapset = yield from self.osu.get_beatmaps(
+                    beatmapset_id=match.group('mapset_id'),
+                    include_converted=0)
             if not mapset:
                 return (None, None)
             mapset = sorted(mapset, key=lambda x: x.difficultyrating)
@@ -111,9 +125,10 @@ class BaseTwitchPlugin:
     @asyncio.coroutine
     def _request_beatmap(self, match, mask, target, **kwargs):
         try:
-            beatmaps = yield from self.osu.get_beatmaps(
-                beatmap_id=match.group('beatmap_id'),
-                include_converted=0)
+            with async_timeout.timeout(10):
+                beatmaps = yield from self.osu.get_beatmaps(
+                    beatmap_id=match.group('beatmap_id'),
+                    include_converted=0)
             if not beatmaps:
                 return (None, None)
         except HTTPError as e:
@@ -205,10 +220,34 @@ class BaseTwitchPlugin:
                     self.bot.privmsg(target, msg)
                 break
 
-    def join(self, channel):
-        self.bot.log.info('[twitch] Trying to join channel {}'.format(channel))
-        self.bot.join(channel)
+    @command
+    @asyncio.coroutine
+    def stats(self, mask, target, args):
+        """Check stats for an osu! player
 
-    def part(self, channel):
-        self.bot.log.info('[twitch] Leaving channel {}'.format(channel))
-        self.bot.part(channel)
+            %%stats <username>...
+        """
+        self.bot.log.debug('[twitch] !stats {}'.format(args))
+        if target.is_channel:
+            dest = target
+        else:
+            dest = mask
+        osu_username = ' '.join(args.get('<username>'))
+        try:
+            with async_timeout.timeout(10):
+                users = yield from self.osu.get_user(osu_username)
+        except HTTPError:
+            users = []
+        if not users:
+            self.bot.privmsg(dest, 'Could not find osu! user {}'.format(osu_username))
+            return
+        user = users[0]
+        msg = ' | '.join([
+            user.username,
+            'PP: {:,} (#{:,})'.format(user.pp_raw, user.pp_rank),
+            'Acc: {:g}%'.format(round(user.accuracy, 2)),
+            'Score: {:,}'.format(user.total_score),
+            'Plays: {:,} (lv{})'.format(user.playcount, math.floor(user.level)),
+            'https://osu.ppy.sh/u/{}'.format(user.user_id),
+        ])
+        self.bot.privmsg(dest, msg)
