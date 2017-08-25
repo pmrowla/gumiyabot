@@ -37,11 +37,11 @@ Requirements
 
 Installation
 ------------
-Via pip
+Via pip ::
 
     pip install gumiyabot
 
-Alternatively, you can clone the source repository and run the bot module directly
+Alternatively, you can clone the source repository and run the bot module directly ::
 
     pip install -r requirements.txt
     python -m gumiyabot
@@ -49,12 +49,12 @@ Alternatively, you can clone the source repository and run the bot module direct
 Running the bot
 ---------------
 
-1. Generate a new config.ini
+1. Generate a new config.ini ::
 
     gumiyabot --new-config
 
 2. Edit config.ini as needed (see configuration section below)
-3. Run the bot
+3. Run the bot ::
 
     gumiyabot config.ini
 
