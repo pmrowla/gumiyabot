@@ -327,17 +327,22 @@ class BaseTwitchPlugin:
 
     @command
     @asyncio.coroutine
-    def stats(self, mask, target, args):
+    def stats(self, mask, target, args, default_user=None):
         """Check stats for an osu! player
 
-            %%stats <username>...
+            %%stats [<username>]...
         """
         self.bot.log.debug('[twitch] !stats {}'.format(args))
         if target.is_channel:
             dest = target
         else:
             dest = mask
-        osu_username = ' '.join(args.get('<username>'))
+        osu_username = ' '.join(args.get('<username>')).strip()
+        if not osu_username:
+            if default_user:
+                osu_username = default_user
+            else:
+                osu_username = self.bancho_nick
         try:
             with async_timeout.timeout(10):
                 users = yield from self.osu.get_user(osu_username)
