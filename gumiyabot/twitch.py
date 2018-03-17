@@ -309,7 +309,7 @@ class BaseTwitchPlugin:
         ]
         for pattern, callback in patterns:
             mod_pattern = r'(\S*\s+\+?(?P<mods>[A-Za-z]+))?'
-            m = re.match(''.join([pattern, mod_pattern]), data)
+            m = re.search(''.join([pattern, mod_pattern]), data)
             if m:
                 if m.group('mods'):
                     mod_flags = self._parse_mods(m.group('mods'))
