@@ -3,7 +3,7 @@ from codecs import open
 from os import path
 
 
-version = '0.1.3.dev'
+version = '0.1.3'
 
 
 install_requires = ['aiohttp', 'irc3', 'osuapi']
