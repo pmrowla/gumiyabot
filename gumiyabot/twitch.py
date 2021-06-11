@@ -360,6 +360,6 @@ class BaseTwitchPlugin:
             'Acc: {:g}%'.format(round(user.accuracy, 2)),
             'Score: {:,}'.format(user.total_score),
             'Plays: {:,} (lv{})'.format(user.playcount, math.floor(user.level)),
-            'https://osu.ppy.sh/u/{}'.format(user.user_id),
+            'https://osu.ppy.sh/users/{}'.format(user.user_id),
         ])
         self.bot.privmsg(dest, msg)
