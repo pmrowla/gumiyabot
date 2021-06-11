@@ -3,8 +3,8 @@ gumiyabot
 
 Standalone Twitch + Bancho IRC bot for handling osu! beatmap requests.
 
-.. image:: https://travis-ci.com/pmrowla/gumiyabot.svg?branch=master
-    :target: https://travis-ci.com/pmrowla/gumiyabot
+.. image:: https://github.com/pmrowla/gumiyabot/actions/workflows/build.yml/badge.svg?branch=master
+    :target: https://github.com/pmrowla/gumiyabot/actions/workflows/build.yml
 
 This package is used in `Gumiya`_ and is provided for users that wish to run their own bot instance and customize the bot's functionality.
 If you only want a beatmap request bot, but do not need to modify or customize it, you may wish to just use stock `Gumiya`_ instead.
