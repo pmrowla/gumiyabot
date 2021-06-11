@@ -3,7 +3,7 @@ from codecs import open
 from os import path
 
 
-version = '0.1.4.dev'
+version = '0.1.4'
 
 
 install_requires = ['aiohttp', 'irc3', 'osuapi']
@@ -27,6 +27,9 @@ setup(
         'License :: OSI Approved :: MIT License',
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
+        'Programming Language :: Python :: 3.7',
+        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.9',
         'Framework :: AsyncIO',
         'Intended Audience :: Developers',
         'Topic :: Games/Entertainment',
