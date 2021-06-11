@@ -68,9 +68,10 @@ class BaseTwitchPlugin:
                     if 'starDiff' in data:
                         # use Tillerino star rating since it factors in mods
                         beatmap.difficultyrating = data['starDiff']
-                    pp = {}
-                    for entry in data['ppForAcc']['entry']:
-                        pp[float(entry['key'])] = float(entry['value'])
+                    pp = {
+                        float(acc): pp_val
+                        for acc, pp_val in data.get('ppForAcc', {}).items()
+                    }
                     if pp:
                         beatmap.pp = pp
                         return pp
