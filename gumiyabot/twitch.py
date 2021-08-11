@@ -305,11 +305,11 @@ class BaseTwitchPlugin:
              self._request_beatmap),
             (r'https?://osu\.ppy\.sh/s/(?P<mapset_id>\d+)',
              self._request_mapset),
-            (r'https?://osu\.ppy\.sh/beatmapsets/(?P<mapset_id>\d+)(#(?P<mode>\w+))?(/(?P<beatmap_id>\d+))?',
+            (r'https?://osu\.ppy\.sh/beatmapsets/(?P<mapset_id>\d+)(#(?P<mode>[a-z]+))?(/(?P<beatmap_id>\d+))?',
              self._request_beatmapsets),
         ]
         for pattern, callback in patterns:
-            mod_pattern = r'(\S*\s+\+?(?P<mods>[A-Za-z]+))?'
+            mod_pattern = r'(/?\s*\+?(?P<mods>[A-Za-z]+))?'
             m = re.search(''.join([pattern, mod_pattern]), data)
             if m:
                 if m.group('mods'):
