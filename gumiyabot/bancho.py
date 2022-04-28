@@ -19,8 +19,8 @@ class BanchoConnection(irc3.IrcConnection):
         commands (i.e. it ends a command with \n instead of \r\n).
         """
         if not data.endswith(b'\r\n'):
-            data = data.rstrip(b'\n') + b'\r\n'
-        return super(BanchoConnection, self).data_received(data)
+            data = b"\r\n".join(line for line in data.split(b"\n"))
+        return super().data_received(data)
 
 
 @irc3.plugin
