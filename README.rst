@@ -21,7 +21,7 @@ Features
 
 Requirements
 ------------
-* Python 3.5+
+* Python 3.7+
 * `Twitch IRC`_ token - note that if you are using the token for your own Twitch account, the bot will connect to Twitch chat using your own account.
   It is recommended to register a secondary Twitch account for the bot.
 * `Bancho (osu!) IRC`_ credentials - note that multiaccounting in osu! is forbidden, and a bannable offense.

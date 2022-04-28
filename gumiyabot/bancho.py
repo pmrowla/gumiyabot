@@ -35,8 +35,7 @@ class BaseBanchoPlugin:
     def connected(self, **kw):
         self.bot.log.info('[bancho] Connected to bancho as {}'.format(self.bot.nick))
 
-    @asyncio.coroutine
-    def get_bancho_msg(self):
+    async def get_bancho_msg(self):
         while True:
-            (target, msg) = yield from self.bancho_queue.get()
+            (target, msg) = await self.bancho_queue.get()
             self.bot.privmsg(target, msg)

@@ -2,8 +2,6 @@
 """
 twitch_osu_bot Twitch chat irc3 plugin.
 """
-from __future__ import unicode_literals
-
 import asyncio
 import math
 import re
@@ -58,12 +56,11 @@ class BaseTwitchPlugin:
         self.bot.log.info('[twitch] Leaving channel {}'.format(channel))
         self.bot.part(channel)
 
-    @asyncio.coroutine
-    def _get_pp(self, beatmap, mods=OsuMod.NoMod):
+    async def _get_pp(self, beatmap, mods=OsuMod.NoMod):
         if self.tillerino:
             try:
                 with async_timeout.timeout(15):
-                    data = yield from self.tillerino.beatmapinfo(beatmap.beatmap_id, mods=mods.value)
+                    data = await self.tillerino.beatmapinfo(beatmap.beatmap_id, mods=mods.value)
                 if data:
                     if 'starDiff' in data:
                         # use Tillerino star rating since it factors in mods
@@ -90,15 +87,14 @@ class BaseTwitchPlugin:
         """
         return beatmaps
 
-    @asyncio.coroutine
-    def _beatmap_msg(self, beatmap, mods=OsuMod.NoMod):
+    async def _beatmap_msg(self, beatmap, mods=OsuMod.NoMod):
         if mods == OsuMod.NoMod:
             mod_string = ''
         else:
             mod_string = ' +{:s}'.format(mods)
         beatmap = self._apply_mods(beatmap, mods)
         # get pp before generating message since it may update star rating based on
-        yield from self._get_pp(beatmap, mods=mods)
+        await self._get_pp(beatmap, mods=mods)
         msg = '[{}] {} - {} [{}] (by {}){}, ♫ {:g}, ★ {:.2f}'.format(
             beatmap.approved.name.capitalize(),
             beatmap.artist,
@@ -118,11 +114,10 @@ class BaseTwitchPlugin:
             ])
         return msg
 
-    @asyncio.coroutine
-    def _request_mapset(self, match, mask, target, mods=OsuMod.NoMod, **kwargs):
+    async def _request_mapset(self, match, mask, target, mods=OsuMod.NoMod, **kwargs):
         try:
             with async_timeout.timeout(15):
-                mapset = yield from self.osu.get_beatmaps(
+                mapset = await self.osu.get_beatmaps(
                     beatmapset_id=match.group('mapset_id'),
                     include_converted=0)
             if not mapset:
@@ -135,14 +130,13 @@ class BaseTwitchPlugin:
             beatmap = self.validate_beatmaps(mapset, **kwargs)[-1]
         except BeatmapValidationError as e:
             return (None, e.reason)
-        msg = yield from self._beatmap_msg(beatmap, mods=mods)
+        msg = await self._beatmap_msg(beatmap, mods=mods)
         return (beatmap, msg)
 
-    @asyncio.coroutine
-    def _request_beatmap(self, match, mask, target, mods=OsuMod.NoMod, **kwargs):
+    async def _request_beatmap(self, match, mask, target, mods=OsuMod.NoMod, **kwargs):
         try:
             with async_timeout.timeout(10):
-                beatmaps = yield from self.osu.get_beatmaps(
+                beatmaps = await self.osu.get_beatmaps(
                     beatmap_id=match.group('beatmap_id'),
                     include_converted=0)
             if not beatmaps:
@@ -154,7 +148,7 @@ class BaseTwitchPlugin:
             beatmap = self.validate_beatmaps(beatmaps, **kwargs)[0]
         except BeatmapValidationError as e:
             return (None, e.reason)
-        msg = yield from self._beatmap_msg(beatmap, mods=mods)
+        msg = await self._beatmap_msg(beatmap, mods=mods)
         return (beatmap, msg)
 
     def _badge_list(self, badges):
@@ -175,13 +169,12 @@ class BaseTwitchPlugin:
         elif privmsg_tags.get('subscriber', 0) == 1:
             return True
 
-    @asyncio.coroutine
-    def _request_beatmapsets(self, match, mask, target, **kwargs):
+    async def _request_beatmapsets(self, match, mask, target, **kwargs):
         """Handle "new" osu web style beatmapsets links"""
         if match.group('beatmap_id'):
-            return self._request_beatmap(match, mask, target, **kwargs)
+            return await self._request_beatmap(match, mask, target, **kwargs)
         else:
-            return self._request_mapset(match, mask, target, **kwargs)
+            return await self._request_mapset(match, mask, target, **kwargs)
 
     def _bancho_msg(self, mask, beatmap, mods=OsuMod.NoMod):
         m, s = divmod(beatmap.total_length, 60)
@@ -296,8 +289,7 @@ class BaseTwitchPlugin:
         return modded
 
     @irc3.event(irc3.rfc.PRIVMSG)
-    @asyncio.coroutine
-    def request_beatmap(self, tags=None, mask=None, target=None, data=None, bancho_target=None, **kwargs):
+    async def request_beatmap(self, tags=None, mask=None, target=None, data=None, bancho_target=None, **kwargs):
         if not target.is_channel or not data:
             return
         patterns = [
@@ -316,19 +308,18 @@ class BaseTwitchPlugin:
                     mod_flags = self._parse_mods(m.group('mods'))
                 else:
                     mod_flags = OsuMod.NoMod
-                (beatmap, msg) = yield from callback(m, mask, target, mods=mod_flags, **kwargs)
+                (beatmap, msg) = await callback(m, mask, target, mods=mod_flags, **kwargs)
                 if beatmap:
                     bancho_msg = self._bancho_msg(mask, beatmap, mods=mod_flags)
                     if not bancho_target:
                         bancho_target = self.bancho_nick
-                    yield from self.bancho_queue.put((bancho_target, bancho_msg))
+                    await self.bancho_queue.put((bancho_target, bancho_msg))
                 if msg:
                     self.bot.privmsg(target, msg)
                 break
 
     @command
-    @asyncio.coroutine
-    def stats(self, mask, target, args, default_user=None):
+    async def stats(self, mask, target, args, default_user=None):
         """Check stats for an osu! player
 
             %%stats [<username>]...
@@ -346,7 +337,7 @@ class BaseTwitchPlugin:
                 osu_username = self.bancho_nick
         try:
             with async_timeout.timeout(10):
-                users = yield from self.osu.get_user(osu_username)
+                users = await self.osu.get_user(osu_username)
         except (HTTPError, asyncio.TimeoutError) as e:
             self.bot.log.debug('[twitch] {}'.format(e))
             users = []

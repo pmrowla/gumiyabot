@@ -18,7 +18,7 @@ def run(config_file='config.ini', debug=False):
     gumiya_config = config['gumiya']
 
     loop = asyncio.get_event_loop()
-    bancho_queue = asyncio.Queue(loop=loop)
+    bancho_queue = asyncio.Queue()
 
     config_common = {
         'irc3.plugins.command': {
