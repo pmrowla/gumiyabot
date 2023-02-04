@@ -154,9 +154,10 @@ class BaseTwitchPlugin:
     def _badge_list(self, badges):
         """Parse twitch badge ircv3 tags into a list"""
         b_list = []
-        for x in badges.split(','):
-            (badge, version) = x.split('/', 1)
-            b_list.append(badge)
+        if badges:
+            for x in badges.split(','):
+                (badge, version) = x.split('/', 1)
+                b_list.append(badge)
         return b_list
 
     def _is_sub(self, privmsg_tags):
