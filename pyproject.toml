@@ -1,0 +1,51 @@
+[project]
+name = "gumiyabot"
+dynamic = ["version"]
+description = "Standalone Twitch + Bancho IRC bot for handling osu! beatmap requests"
+authors = [
+    {name = "Peter Rowlands", email = "peter@pmrowla.com"},
+]
+dependencies = [
+    "aiohttp>=2.0.0",
+    "irc3>=1.0.0",
+    "ossapi[async]>=5.3.0",
+]
+requires-python = ">=3.11"
+readme = "README.rst"
+license = {text = "MIT"}
+keywords = [
+    "osu twitch gumiya",
+]
+classifiers = [
+    "Development Status :: 5 - Production/Stable",
+    "Framework :: AsyncIO",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Communications :: Chat :: Internet Relay Chat",
+    "Topic :: Games/Entertainment",
+]
+
+[project.urls]
+Homepage = "https://github.com/pmrowla/gumiyabot"
+
+[project.scripts]
+gumiyabot = "gumiyabot.__main__:main"
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+[tool.pdm]
+distribution = true
+
+[tool.pdm.version]
+source = "scm"
+
+[dependency-groups]
+test = [
+    "pytest>=9.0.0",
+]
