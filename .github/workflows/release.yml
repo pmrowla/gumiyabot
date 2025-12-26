@@ -6,25 +6,17 @@ on:
 
 jobs:
   release:
+    name: upload release to PyPI
     runs-on: ubuntu-latest
+    permissions:
+      # This permission is needed for private repositories.
+      contents: read
+      # IMPORTANT: this permission is mandatory for trusted publishing
+      id-token: write
     steps:
-    - name: Check out the repository
-      uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
-    - name: Set up Python 3.11
-      uses: actions/setup-python@v6
-      with:
-        python-version: '3.11'
+      - uses: pdm-project/setup-pdm@v4
 
-    - name: Upgrade pip/build
-      run: |
-        pip install --upgrade pip build
-        pip --version
-    - name: Build package
-      run: python -m build
-
-    - name: Upload package
-      uses: pypa/gh-action-pypi-publish@master
-      with:
-        user: __token__
-        password: ${{ secrets.PYPI_TOKEN }}
+      - name: Publish package distributions to PyPI
+        run: pdm publish
