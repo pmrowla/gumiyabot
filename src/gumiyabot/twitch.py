@@ -190,7 +190,7 @@ class BaseTwitchPlugin:
             return (None, None, None)
         try:
             beatmap, diff = self.validate_beatmaps(
-                [(beatmap, diff)], mapset=await beatmap.mapset(), **kwargs
+                [(beatmap, diff)], mapset=await beatmap.beatmapset(), **kwargs
             )[0]
         except BeatmapValidationError as e:
             return (None, None, e.reason)
