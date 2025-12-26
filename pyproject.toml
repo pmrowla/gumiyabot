@@ -46,6 +46,7 @@ distribution = true
 source = "scm"
 
 [dependency-groups]
-test = [
+dev = [
     "pytest>=9.0.0",
+    "pre-commit>=4.5.1",
 ]

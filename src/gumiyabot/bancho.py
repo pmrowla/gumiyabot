@@ -1,7 +1,7 @@
-# -*- coding: utf-8 -*-
 """
 Gumiya Bancho (osu!) irc3 plugin.
 """
+
 import asyncio
 
 import irc3
@@ -18,22 +18,21 @@ class BanchoConnection(irc3.IrcConnection):
         Bancho does not send trailing carriage returns at the end of IRC
         commands (i.e. it ends a command with \n instead of \r\n).
         """
-        if not data.endswith(b'\r\n'):
+        if not data.endswith(b"\r\n"):
             data = b"\r\n".join(line for line in data.split(b"\n"))
         return super().data_received(data)
 
 
 @irc3.plugin
 class BaseBanchoPlugin:
-
     def __init__(self, bot):
         self.bot = bot
-        self.bancho_queue = self.bot.config.get('bancho_queue')
+        self.bancho_queue = self.bot.config.get("bancho_queue")
         asyncio.ensure_future(self.get_bancho_msg())
 
     @irc3.event(irc3.rfc.CONNECTED)
     def connected(self, **kw):
-        self.bot.log.info('[bancho] Connected to bancho as {}'.format(self.bot.nick))
+        self.bot.log.info(f"[bancho] Connected to bancho as {self.bot.nick}")
 
     async def get_bancho_msg(self):
         while True:
