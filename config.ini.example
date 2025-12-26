@@ -30,13 +30,16 @@ bancho_password =
 #   twitch_channel = GumiyaBot
 twitch_channel =
 
-# osu! API key (required)
+# osu! OAuth client key (required)
 #
-# See https://osu.ppy.sh/p/api to obtain an osu! API key
+# See https://osu.ppy.sh/home/account/edit#oauth to configure an osu! OAuth
+# client
 #
 # Ex:
-#   osu_api_key = abcd1234
-osu_api_key =
+#   osu_client_id = 1234
+#   osu_client_secret = abcd1234
+osu_client_id =
+osu_client_secret =
 
 # Tillerino API key (optional)
 #

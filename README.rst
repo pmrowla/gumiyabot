@@ -21,18 +21,18 @@ Features
 
 Requirements
 ------------
-* Python 3.7+
+* Python 3.11+
 * `Twitch IRC`_ OAuth token - note that if you are using the token for your own Twitch account, the bot will connect to Twitch chat using your own account.
   It is recommended to register a secondary Twitch account for the bot.
 * `Bancho (osu!) IRC`_ credentials - note that multiaccounting in osu! is forbidden, and a bannable offense.
   This includes registering a bot-specific osu! account without explicit permission from osu! staff.
   Therefore, it is recommended to run the bot under your own osu! account.
   This will not affect any functionality, you will just receive map requests as in game PMs from yourself.
-* `osu! API`_ key
+* `osu! OAuth Client`_ key
 
 .. _`Twitch IRC`: https://dev.twitch.tv/docs/irc/authenticate-bot
 .. _`Bancho (osu!) IRC`: https://osu.ppy.sh/p/irc
-.. _`osu! API`: https://osu.ppy.sh/p/api
+.. _`osu! OAuth Client`: https://osu.ppy.sh/home/account/edit#oauth
 
 
 Installation
@@ -70,8 +70,6 @@ Twitch usage
 * Map requests can be linked in the format ``<beatmap or mapset URL> +HDDT``.
   The bot accepts beatmap and mapset URLs from both the old and new osu! web sites.
   PP information is dependent on Tillerino.
-  When mods are used, the bot output will always the display the modified AR, OD and BPM, but displaying modified star rating is dependent on Tillerino.
-  If Tillerino is unavailable, or if Tillerino does not have a calculated PP and difficulty for a certain map + mod combination, the nomod star rating will be used.
 * Player stats can be queried with ``!stats <player name>``
 
 Developing
