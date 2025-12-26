@@ -9,14 +9,14 @@ import irc3
 from .bancho import BanchoConnection
 
 
-def run(config_file="config.ini", debug=False):
+async def run(config_file="config.ini", debug=False):
     config = configparser.ConfigParser()
     config.read(config_file)
     if "gumiya" not in config:
         sys.exit("Error: Invalid config, missing [gumiya] section")
     gumiya_config = config["gumiya"]
 
-    loop = asyncio.get_event_loop()
+    loop = asyncio.get_running_loop()
     bancho_queue = asyncio.Queue()
 
     config_common = {
@@ -50,7 +50,8 @@ def run(config_file="config.ini", debug=False):
         ],
         nick=gumiya_config["twitch_username"],
         password=gumiya_config["twitch_password"],
-        osu_api_key=gumiya_config["osu_api_key"],
+        osu_client_id=gumiya_config["osu_client_id"],
+        osu_client_secret=gumiya_config["osu_client_secret"],
         tillerino_api_key=gumiya_config.get("tillerino_api_key", fallback=""),
         bancho_nick=gumiya_config["bancho_username"],
         twitch_channel=gumiya_config["twitch_channel"],
@@ -81,7 +82,11 @@ def run(config_file="config.ini", debug=False):
     )
     bancho_bot.run(forever=False)
 
-    loop.run_forever()
+    try:
+        while True:
+            await asyncio.sleep(1)
+    except KeyboardInterrupt:
+        return
 
 
 def generate_config(filename="config.ini"):
@@ -122,13 +127,16 @@ twitch_channel =
 bancho_username =
 bancho_password =
 
-# osu! API key (required)
+# osu! OAuth client key (required)
 #
-# See https://osu.ppy.sh/p/api to obtain an osu! API key
+# See https://osu.ppy.sh/home/account/edit#oauth to configure an osu! OAuth
+# client
 #
 # Ex:
-#   osu_api_key = abcd1234
-osu_api_key =
+#   osu_client_id = 1234
+#   osu_client_secret = abcd1234
+osu_client_id =
+osu_client_secret =
 """.strip()
         )
         print(f"Created {filename}")
@@ -168,7 +176,7 @@ def main():
     else:
         if not os.path.exists(args.config_file):
             parser.error("could not find configuration file")
-        run(config_file=args.config_file, debug=args.debug)
+        asyncio.run(run(config_file=args.config_file, debug=args.debug))
 
 
 if __name__ == "__main__":

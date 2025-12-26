@@ -2,17 +2,17 @@
 twitch_osu_bot Twitch chat irc3 plugin.
 """
 
+import asyncio
 import math
 import re
 
-import async_timeout
+import aiohttp
 
 import irc3
 from irc3.plugins.command import command
 
-from osuapi import OsuApi, AHConnector
-from osuapi.enums import OsuMod
-from osuapi.errors import HTTPError
+from ossapi import APIException, Beatmap, Mod, OssapiAsync
+from ossapi.models import BeatmapDifficultyAttributes
 
 from .utils import TillerinoApi
 
@@ -28,7 +28,10 @@ class BaseTwitchPlugin:
         self.bot = bot
         self.bancho_queue = self.bot.config.get("bancho_queue")
         self.bancho_nick = self.bot.config.get("bancho_nick")
-        self.osu = OsuApi(self.bot.config.get("osu_api_key"), connector=AHConnector())
+        self.osu = OssapiAsync(
+            self.bot.config.get("osu_client_id"),
+            self.bot.config.get("osu_client_secret"),
+        )
         tillerino_key = self.bot.config.get("tillerino_api_key")
         if tillerino_key:
             self.tillerino = TillerinoApi(tillerino_key)
@@ -51,17 +54,12 @@ class BaseTwitchPlugin:
         self.bot.log.info(f"[twitch] Leaving channel {channel}")
         self.bot.part(channel)
 
-    async def _get_pp(self, beatmap, mods=OsuMod.NoMod):
+    async def _get_pp(self, beatmap: Beatmap, mods: Mod = Mod.NM):
         if self.tillerino:
             try:
-                with async_timeout.timeout(15):
-                    data = await self.tillerino.beatmapinfo(
-                        beatmap.beatmap_id, mods=mods.value
-                    )
+                async with asyncio.timeout(15):
+                    data = await self.tillerino.beatmapinfo(beatmap.id, mods=mods.value)
                 if data:
-                    if "starDiff" in data:
-                        # use Tillerino star rating since it factors in mods
-                        beatmap.difficultyrating = data["starDiff"]
                     pp = {
                         float(acc): pp_val
                         for acc, pp_val in data.get("ppForAcc", {}).items()
@@ -69,12 +67,14 @@ class BaseTwitchPlugin:
                     if pp:
                         beatmap.pp = pp
                         return pp
-            except (HTTPError, TimeoutError) as e:
+            except (aiohttp.ClientError, APIException, TimeoutError) as e:
                 self.bot.log.debug(f"[twitch] {e}")
         beatmap.pp = None
         return None
 
-    def validate_beatmaps(self, beatmaps, **kwargs):
+    def validate_beatmaps(
+        self, beatmaps: list[tuple[Beatmap, BeatmapDifficultyAttributes]], **kwargs
+    ) -> list[tuple[Beatmap, BeatmapDifficultyAttributes]]:
         """Return subset of maps in beatmaps that pass validation criteria
 
         Raises:
@@ -84,24 +84,26 @@ class BaseTwitchPlugin:
         """
         return beatmaps
 
-    async def _beatmap_msg(self, beatmap, mods=OsuMod.NoMod):
-        if mods == OsuMod.NoMod:
-            mod_string = ""
-        else:
-            mod_string = f" +{mods:s}"
-        beatmap = self._apply_mods(beatmap, mods)
+    async def _beatmap_msg(
+        self,
+        beatmap: Beatmap,
+        diff: BeatmapDifficultyAttributes | None = None,
+        mods: Mod = Mod.NM,
+    ) -> str:
+        mapset = await beatmap.beatmapset()
         # get pp before generating message since it may update star rating based on
         await self._get_pp(beatmap, mods=mods)
-        msg = "[{}] {} - {} [{}] (by {}){}, ♫ {:g}, ★ {:.2f}".format(
-            beatmap.approved.name.capitalize(),
-            beatmap.artist,
-            beatmap.title,
+        msg = "[{}] {} - {} [{}] (by {}){}, ♫ {:g}".format(
+            beatmap.status.name.capitalize(),
+            mapset.artist,
+            mapset.title,
             beatmap.version,
-            beatmap.creator,
-            mod_string,
+            mapset.creator,
+            str(mods),
             beatmap.bpm,
-            round(beatmap.difficultyrating, 2),
         )
+        if diff:
+            msg = ", ".join([msg, f"★ {diff.star_rating:.2f}"])
         if beatmap.pp:
             msg = " | ".join(
                 [
@@ -113,42 +115,73 @@ class BaseTwitchPlugin:
             )
         return msg
 
-    async def _request_mapset(self, match, mask, target, mods=OsuMod.NoMod, **kwargs):
+    async def _request_mapset(self, match, mask, target, mods: Mod = Mod.NM, **kwargs):
         try:
-            with async_timeout.timeout(15):
-                mapset = await self.osu.get_beatmaps(
-                    beatmapset_id=match.group("mapset_id"), include_converted=0
+            async with asyncio.timeout(15):
+                mapset = await self.osu.beatmapset(
+                    beatmapset_id=match.group("mapset_id")
                 )
             if not mapset:
-                return (None, None)
-            mapset = sorted(mapset, key=lambda x: x.difficultyrating)
-        except (HTTPError, TimeoutError) as e:
+                return (None, None, None)
+        except (aiohttp.ClientError, APIException, TimeoutError) as e:
             self.bot.log.debug(f"[twitch] {e}")
-            return (None, None)
+            return (None, None, None)
         try:
-            beatmap = self.validate_beatmaps(mapset, **kwargs)[-1]
+            async with asyncio.timeout(30):
+                diffs = [
+                    result.attributes if not isinstance(result, BaseException) else None
+                    for result in await asyncio.gather(
+                        *(
+                            self.osu.beatmap_attributes(
+                                beatmap_id=beatmap.id, mods=mods
+                            )
+                            for beatmap in mapset.beatmaps
+                        ),
+                        return_exceptions=True,
+                    )
+                ]
+        except (aiohttp.ClientError, APIException, TimeoutError) as e:
+            self.bot.log.debug(f"[twitch] {e}")
+            return (None, None, None)
+        beatmaps = sorted(
+            zip(
+                (self._apply_mods(beatmap, mods=mods) for beatmap in mapset.beatmaps),
+                diffs,
+            ),
+            key=lambda x: x[1].star_rating if x[1] is not None else 0,
+        )
+        try:
+            beatmap, diff = self.validate_beatmaps(beatmaps, **kwargs)[-1]
         except BeatmapValidationError as e:
-            return (None, e.reason)
-        msg = await self._beatmap_msg(beatmap, mods=mods)
-        return (beatmap, msg)
+            return (None, None, e.reason)
+        msg = await self._beatmap_msg(beatmap, diff=diff, mods=mods)
+        return (beatmap, diff, msg)
 
-    async def _request_beatmap(self, match, mask, target, mods=OsuMod.NoMod, **kwargs):
+    async def _request_beatmap(self, match, mask, target, mods=Mod.NM, **kwargs):
         try:
-            with async_timeout.timeout(10):
-                beatmaps = await self.osu.get_beatmaps(
-                    beatmap_id=match.group("beatmap_id"), include_converted=0
-                )
-            if not beatmaps:
-                return (None, None)
-        except (HTTPError, TimeoutError) as e:
+            async with asyncio.timeout(10):
+                beatmap = await self.osu.beatmap(beatmap_id=match.group("beatmap_id"))
+            if not beatmap:
+                return (None, None, None)
+        except (aiohttp.ClientError, APIException, TimeoutError) as e:
             self.bot.log.debug(f"[twitch] {e}")
-            return (None, None)
+            return (None, None, None)
+        beatmap = self._apply_mods(beatmap, mods=mods)
         try:
-            beatmap = self.validate_beatmaps(beatmaps, **kwargs)[0]
+            async with asyncio.timeout(10):
+                result = await self.osu.beatmap_attributes(
+                    beatmap_id=beatmap.id, mods=mods
+                )
+                diff = result.attributes if result else None
+        except (aiohttp.ClientError, APIException, TimeoutError) as e:
+            self.bot.log.debug(f"[twitch] {e}")
+            return (None, None, None)
+        try:
+            beatmap, diff = self.validate_beatmaps([(beatmap, diff)], **kwargs)[0]
         except BeatmapValidationError as e:
-            return (None, e.reason)
-        msg = await self._beatmap_msg(beatmap, mods=mods)
-        return (beatmap, msg)
+            return (None, None, e.reason)
+        msg = await self._beatmap_msg(beatmap, diff=diff, mods=mods)
+        return (beatmap, diff, msg)
 
     def _badge_list(self, badges):
         """Parse twitch badge ircv3 tags into a list"""
@@ -176,32 +209,36 @@ class BaseTwitchPlugin:
         else:
             return await self._request_mapset(match, mask, target, **kwargs)
 
-    def _bancho_msg(self, mask, beatmap, mods=OsuMod.NoMod):
-        m, s = divmod(beatmap.total_length, 60)
-        if mods == OsuMod.NoMod:
-            mod_string = ""
-        else:
-            mod_string = f" +{mods:s}"
+    async def _bancho_msg(
+        self,
+        mask,
+        beatmap: Beatmap,
+        diff: BeatmapDifficultyAttributes | None = None,
+        mods: Mod = Mod.NM,
+    ):
+        bpm, total_length = self._get_speed_mod(beatmap, mods=mods)
+        m, s = divmod(total_length, 60)
+        mapset = await beatmap.beatmapset()
         bancho_msg = " ".join(
             [
                 f"{mask.nick} >",
-                "[http://osu.ppy.sh/b/{} {} - {} [{}]]{}".format(
-                    beatmap.beatmap_id,
-                    beatmap.artist,
-                    beatmap.title,
+                "[http://osu.ppy.sh/b/{} {} - {} [{}]] {}".format(
+                    beatmap.id,
+                    mapset.artist,
+                    mapset.title,
                     beatmap.version,
-                    mod_string,
+                    str(mods),
                 ),
-                "{}:{:02d} ★ {:.2f} ♫ {:g} AR{:g} OD{:g}".format(
-                    m,
-                    s,
-                    round(beatmap.difficultyrating, 2),
-                    beatmap.bpm,
-                    round(beatmap.diff_approach, 1),
-                    round(beatmap.diff_overall, 1),
-                ),
+                f"{m}:{s:02d} ♫ {bpm:g}",
             ]
         )
+        if diff:
+            bancho_msg = " ".join(
+                [
+                    bancho_msg,
+                    f"★ {diff.star_rating:.2f} CS{round(beatmap.cs, 1):g} AR{round(beatmap.ar, 1):g} OD{round(beatmap.accuracy, 1):g}",
+                ]
+            )
         if beatmap.pp:
             bancho_msg = " | ".join(
                 [
@@ -212,29 +249,6 @@ class BaseTwitchPlugin:
                 ]
             )
         return bancho_msg
-
-    def _parse_mods(self, mods):
-        mod_dict = {
-            "NF": OsuMod.NoFail,
-            "EZ": OsuMod.Easy,
-            "HD": OsuMod.Hidden,
-            "HR": OsuMod.HardRock,
-            "SD": OsuMod.SuddenDeath,
-            "DT": OsuMod.DoubleTime,
-            "RX": OsuMod.Relax,
-            "HT": OsuMod.HalfTime,
-            "NC": OsuMod.Nightcore,
-            "FL": OsuMod.Flashlight,
-            "SO": OsuMod.SpunOut,
-            "AP": OsuMod.Autopilot,
-            "PF": OsuMod.Perfect,
-        }
-        if (len(mods) % 2) != 0:
-            mods = mods[:-1]
-        mod_flags = OsuMod.NoMod
-        for mod in [mods.upper()[i : i + 2] for i in range(0, len(mods), 2)]:
-            mod_flags |= mod_dict.get(mod, OsuMod.NoMod)
-        return mod_flags
 
     def _mod_ar(self, ar, ar_mul, speed_mul):
         ar0_ms = 1800
@@ -271,45 +285,45 @@ class BaseTwitchPlugin:
         od = (od0_ms - od_ms) / od_ms_step
         return od
 
-    def _apply_mods(self, beatmap, mods=OsuMod.NoMod):
-        """Return a copy of beatmap with difficulty modifiers applied"""
-        if mods == OsuMod.NoMod:
+    def _apply_mods(self, beatmap: Beatmap, mods=Mod.NM) -> Beatmap:
+        """Apply mods to beatmap with difficulty attributes."""
+        if mods == Mod.NM:
             return beatmap
 
-        modded = beatmap
-
-        if (
-            OsuMod.DoubleTime | OsuMod.Nightcore
-        ) in mods and OsuMod.HalfTime not in mods:
+        if (Mod.DT in mods or Mod.NC in mods) and Mod.HT not in mods:
             speed_mul = 1.5
-        elif (
-            OsuMod.HalfTime in mods
-            and (OsuMod.DoubleTime | OsuMod.Nightcore) not in mods
-        ):
+        elif Mod.HT in mods and Mod.DT not in mods and Mod.NC not in mods:
             speed_mul = 0.75
         else:
             speed_mul = 1.0
-        modded.bpm *= speed_mul
+        beatmap.bpm *= speed_mul
+        beatmap.total_length = round(beatmap.total_length / speed_mul)
 
-        if OsuMod.HardRock in mods and OsuMod.Easy not in mods:
+        if Mod.HR in mods and Mod.EZ not in mods:
             od_ar_hp_mul = 1.4
             cs_mul = 1.3
-        elif OsuMod.Easy in mods and OsuMod.HardRock not in mods:
+        elif Mod.EZ in mods and Mod.HR not in mods:
             od_ar_hp_mul = 0.5
             cs_mul = 0.5
         else:
             od_ar_hp_mul = 1.0
             cs_mul = 1.0
-        modded.diff_approach = self._mod_ar(
-            beatmap.diff_approach, od_ar_hp_mul, speed_mul
-        )
-        modded.diff_overall = self._mod_ar(
-            beatmap.diff_overall, od_ar_hp_mul, speed_mul
-        )
-        modded.diff_drain = min(10.0, beatmap.diff_drain * od_ar_hp_mul)
-        modded.diff_size = min(10.0, beatmap.diff_size * cs_mul)
+        beatmap.ar = self._mod_ar(beatmap.ar, od_ar_hp_mul, speed_mul)
+        beatmap.accuracy = self._mod_od(beatmap.accuracy, od_ar_hp_mul, speed_mul)
+        beatmap.drain = min(10.0, beatmap.drain * od_ar_hp_mul)
+        beatmap.cs = min(10.0, beatmap.cs * cs_mul)
 
-        return modded
+        return beatmap
+
+    def _get_speed_mod(self, beatmap: Beatmap, mods: Mod = Mod.NM) -> tuple[float, int]:
+        """Return modded (bpm, total_length)."""
+        if (Mod.DT in mods or Mod.NC in mods) and Mod.HT not in mods:
+            speed_mul = 1.5
+        elif Mod.HT in mods and not (Mod.DT in mods or Mod.NC in mods):
+            speed_mul = 0.75
+        else:
+            speed_mul = 1.0
+        return beatmap.bpm * speed_mul, round(beatmap.total_length / speed_mul)
 
     @irc3.event(irc3.rfc.PRIVMSG)
     async def request_beatmap(
@@ -330,14 +344,19 @@ class BaseTwitchPlugin:
             m = re.search("".join([pattern, mod_pattern]), data)
             if m:
                 if m.group("mods"):
-                    mod_flags = self._parse_mods(m.group("mods"))
+                    try:
+                        mod_flags = Mod(m.group("mods").upper())
+                    except ValueError:
+                        mod_flags = Mod.NM
                 else:
-                    mod_flags = OsuMod.NoMod
-                (beatmap, msg) = await callback(
+                    mod_flags = Mod.NM
+                beatmap, diff, msg = await callback(
                     m, mask, target, mods=mod_flags, **kwargs
                 )
                 if beatmap:
-                    bancho_msg = self._bancho_msg(mask, beatmap, mods=mod_flags)
+                    bancho_msg = await self._bancho_msg(
+                        mask, beatmap, diff=diff, mods=mod_flags
+                    )
                     if not bancho_target:
                         bancho_target = self.bancho_nick
                     await self.bancho_queue.put((bancho_target, bancho_msg))
@@ -363,23 +382,26 @@ class BaseTwitchPlugin:
             else:
                 osu_username = self.bancho_nick
         try:
-            with async_timeout.timeout(10):
-                users = await self.osu.get_user(osu_username)
-        except (HTTPError, TimeoutError) as e:
+            async with asyncio.timeout(10):
+                user = await self.osu.user(osu_username)
+        except (aiohttp.ClientError, APIException, TimeoutError) as e:
             self.bot.log.debug(f"[twitch] {e}")
-            users = []
-        if not users:
+        if not user:
             self.bot.privmsg(dest, f"Could not find osu! user {osu_username}")
             return
-        user = users[0]
+        rank = (
+            f"#{user.statistics.global_rank:,}"
+            if user.statistics.global_rank is not None
+            else "unranked"
+        )
         msg = " | ".join(
             [
                 user.username,
-                f"PP: {user.pp_raw:,} (#{user.pp_rank:,})",
-                f"Acc: {round(user.accuracy, 2):g}%",
-                f"Score: {user.total_score:,}",
-                f"Plays: {user.playcount:,} (lv{math.floor(user.level)})",
-                f"https://osu.ppy.sh/users/{user.user_id}",
+                f"PP: {user.statistics.pp:,} ({rank})",
+                f"Acc: {user.statistics.hit_accuracy:.2f}%",
+                f"Score: {user.statistics.total_score:,}",
+                f"Plays: {user.statistics.play_count:,} (lv{user.statistics.level.current})",
+                f"https://osu.ppy.sh/users/{user.id}",
             ]
         )
         self.bot.privmsg(dest, msg)

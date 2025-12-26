@@ -1,5 +1,5 @@
-#
 import aiohttp
+from typing import Any
 
 
 class TillerinoApi:
@@ -12,7 +12,7 @@ class TillerinoApi:
         self.key = key
         self.session = None
 
-    async def _get(self, url, params={}):
+    async def _get(self, url: str, params={}):
         if not self.session:
             self.session = aiohttp.ClientSession()
 
@@ -23,7 +23,9 @@ class TillerinoApi:
             else:
                 return None
 
-    async def beatmapinfo(self, beatmap_id, mods=0, wait=None):
+    async def beatmapinfo(
+        self, beatmap_id: int, mods: int = 0, wait: int | None = None
+    ) -> dict[str, Any]:
         """Get beatmapinfo from Tillerino API"""
         params = {"beatmapid": beatmap_id, "mods": mods}
         if wait:
