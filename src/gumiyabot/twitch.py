@@ -11,7 +11,14 @@ import aiohttp
 import irc3
 from irc3.plugins.command import command
 
-from ossapi import APIException, Beatmap, Mod, OssapiAsync
+from ossapi import (
+    APIException,
+    Beatmap,
+    Beatmapset,
+    BeatmapsetCompact,
+    Mod,
+    OssapiAsync,
+)
 from ossapi.models import BeatmapDifficultyAttributes
 
 from .utils import TillerinoApi
@@ -73,7 +80,10 @@ class BaseTwitchPlugin:
         return None
 
     def validate_beatmaps(
-        self, beatmaps: list[tuple[Beatmap, BeatmapDifficultyAttributes]], **kwargs
+        self,
+        beatmaps: list[tuple[Beatmap, BeatmapDifficultyAttributes]],
+        mapset: Beatmapset | BeatmapsetCompact,
+        **kwargs,
     ) -> list[tuple[Beatmap, BeatmapDifficultyAttributes]]:
         """Return subset of maps in beatmaps that pass validation criteria
 
@@ -151,7 +161,9 @@ class BaseTwitchPlugin:
             key=lambda x: x[1].star_rating if x[1] is not None else 0,
         )
         try:
-            beatmap, diff = self.validate_beatmaps(beatmaps, **kwargs)[-1]
+            beatmap, diff = self.validate_beatmaps(beatmaps, mapset=mapset, **kwargs)[
+                -1
+            ]
         except BeatmapValidationError as e:
             return (None, None, e.reason)
         msg = await self._beatmap_msg(beatmap, diff=diff, mods=mods)
@@ -177,7 +189,9 @@ class BaseTwitchPlugin:
             self.bot.log.debug(f"[twitch] {e}")
             return (None, None, None)
         try:
-            beatmap, diff = self.validate_beatmaps([(beatmap, diff)], **kwargs)[0]
+            beatmap, diff = self.validate_beatmaps(
+                [(beatmap, diff)], mapset=await beatmap.mapset(), **kwargs
+            )[0]
         except BeatmapValidationError as e:
             return (None, None, e.reason)
         msg = await self._beatmap_msg(beatmap, diff=diff, mods=mods)
