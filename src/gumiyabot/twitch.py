@@ -100,7 +100,11 @@ class BaseTwitchPlugin:
         diff: BeatmapDifficultyAttributes | None = None,
         mods: Mod = Mod.NM,
     ) -> str:
-        mapset = await beatmap.beatmapset()
+        mapset = (
+            beatmap._beatmapset
+            if beatmap._beatmapset is not None
+            else await beatmap.beatmapset()
+        )
         # get pp before generating message since it may update star rating based on
         await self._get_pp(beatmap, mods=mods)
         msg = "[{}] {} - {} [{}] (by {}){}, ♫ {:g}".format(
@@ -189,8 +193,13 @@ class BaseTwitchPlugin:
             self.bot.log.debug(f"[twitch] {e}")
             return (None, None, None)
         try:
+            mapset = (
+                beatmap._beatmapset
+                if beatmap._beatmapset is not None
+                else await beatmap.beatmapset()
+            )
             beatmap, diff = self.validate_beatmaps(
-                [(beatmap, diff)], mapset=await beatmap.beatmapset(), **kwargs
+                [(beatmap, diff)], mapset=mapset, **kwargs
             )[0]
         except BeatmapValidationError as e:
             return (None, None, e.reason)
@@ -232,7 +241,11 @@ class BaseTwitchPlugin:
     ):
         bpm, total_length = self._get_speed_mod(beatmap, mods=mods)
         m, s = divmod(total_length, 60)
-        mapset = await beatmap.beatmapset()
+        mapset = (
+            beatmap._beatmapset
+            if beatmap._beatmapset is not None
+            else await beatmap.beatmapset()
+        )
         bancho_msg = " ".join(
             [
                 f"{mask.nick} >",
